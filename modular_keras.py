@@ -17,7 +17,10 @@ def define_model(in_dims, out_dims, hidden_vect, LR=0.1):
 
   for layer in hidden_vect[1:]:
     model.add(Dense(layer))
-    model.add(Activation('linear'))
+    model.add(Activation('relu'))
+
+  model.add(Dense(out_dims))
+  model.add(Activation('linear'))
 
   adam = Adam(lr=LR)
   model.compile(loss='mse', optimizer=adam, 
@@ -50,6 +53,6 @@ NUM_CLASSES= 2
 if __name__ == "__main__":
   train_x, train_y, test_x, test_y = make_data(DATA_SIZE, INPUT_SIZE,
                                                NUM_CLASSES)
-  hidden = [10, 5]
+  hidden = [10]
 
   model = define_model(INPUT_SIZE, NUM_CLASSES, hidden)
