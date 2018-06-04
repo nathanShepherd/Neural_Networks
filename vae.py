@@ -32,10 +32,9 @@ class NeuralNetwork:
         initial = tf.truncated_normal(shape, stddev=0.1)
         return tf.Variable(initial, name=name)
 
-    def load_dataset(self, data_dir, img_pixels=28*28):
+    def load_dataset(self, data_dir):
         img_data = []
         print('Loading dataset')
-        self.img_pixels = img_pixels
         for i, filename in enumerate(os.listdir(data_dir)):
           if i % (50) == 0:
               print(i*100/(len(os.listdir(data_dir))))
@@ -69,7 +68,10 @@ class VAE(NeuralNetwork):
         KL_term_array = []
         
         for i in range(0, epochs - batch_size, batch_size):
-            x_batch = [self.PIL2array(pic) for pic in self.img_data[i: i + batch_size]]
+            x_batch = np.zeros((batch_size, IMG_PIXELS))
+            
+            for idx, pic in enumerate(self.img_data[i: i + batch_size]):
+                x_batch[idx] = self.PIL2array(pic)
 
             sess.run(self.optimizer, feed_dict={self.X: x_batch})
 
@@ -78,14 +80,7 @@ class VAE(NeuralNetwork):
                 print("Iteration: {}, Loss: {}".format(i, vlb_eval), end="")
                 variational_lower_bound_array.append(vlb_eval)
                 #log_likelihood_array.append(np.mean(log_likelihood.eval(feed_dict={X: x_batch})))
-                #KL_term_array.append(np.mean(KL_term.eval(feed_dict={X: x_batch})))
-
-                
-
-                
-                
-            
-            
+                #KL_term_array.append(np.mean(KL_term.eval(feed_dict={X: x_batch})))     
 
     def compile_model(self):
         #Information is lost because it goes from a smaller to a larger dimensionality. 
@@ -125,10 +120,10 @@ class VAE(NeuralNetwork):
         b_logstd = self.bias_variable([self.hidden[0]], 'B_logstd')
         self.logstd = self.perceptron(h_enc, w_logstd, b_logstd)
 
-        noise = tf.random_normal([1, self.latent_dim])
+        noise = tf.random_normal([10, self.hidden[-1]])
         
         # Z is the output parameter of encoder
-        self.Z = self.mu + tf.matmul(noise, tf.exp(.5*self.logstd))
+        self.Z = self.mu + tf.matmul(tf.transpose(noise), tf.exp(.5*self.logstd))
 
     def define_decoder(self):
         w_dec = self.weight_variable([self.hidden[-1], self.latent_dim], 'W_decoder')
@@ -141,18 +136,22 @@ class VAE(NeuralNetwork):
         self.reconstruction = tf.nn.sigmoid(self.perceptron(h_dec, w_reconstruct, b_reconstruct))
 
     def PIL2array(self, img):
-        return np.array(img.getdata(),
-                    np.uint8).reshape(img.size[1], img.size[0], 3)
+        return np.array(img.getdata(), np.uint8).reshape(1, -1)
+
+    def array2PIL(self, vector):
+        channels = 3
+        dims = (IMG_PIXELS / channels) / 2
+        return vector.reshape(dims,dims,3)
         
         
 
         
-IMG_PIXELS = 28*28       
+IMG_PIXELS = 28*28 * 3
 
 
 if __name__ == "__main__":
     vae = VAE(500, [20])
-    vae.load_dataset('images/pokemon/28/')
+    vae.load_dataset('images/pokemon/sample_of_10/28/')
     vae.train(100)
     
     
