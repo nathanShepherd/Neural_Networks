@@ -7,7 +7,7 @@ import os
 
 output_size = (28, 28)
 data_dir = 'images/pokemon/sample_of_10/'
-file_extension = '.jpg'
+file_extension = '.bmp'
 
 def down_sample(data_dir):
   print('Downsampling images')
@@ -27,7 +27,7 @@ def down_sample(data_dir):
         img.thumbnail(output_size, Image.ANTIALIAS)
         if output_size[0] == output_size[1]:
             str_size = str(output_size[0])
-          
+            #str_size in the name of the subdirectory of data_dir
             img.save('%s/%s/~%s_%s%s' % (data_dir[:-1], str_size,
                                        filename, str_size, f_ext))
   print('Downsampling complete!')
