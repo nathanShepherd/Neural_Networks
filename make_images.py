@@ -6,7 +6,7 @@ import os
 #poke.show()
 
 output_size = (28, 28)
-data_dir = 'images/pokemon/sample_of_10/'
+data_dir = 'images/pokemon/orig/'
 file_extension = '.bmp'
 
 def down_sample(data_dir):

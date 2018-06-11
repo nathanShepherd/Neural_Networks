@@ -1,27 +1,27 @@
-# Started from How to autoencode your Pokémon
+##Source codes cited:
 # niazangels / vae-pokedex / pokedex.ipynb
-# @ https://github.com/niazangels/vae-pokedex/blob/master/pokedex.ipynb
+##@ https://github.com/niazangels/vae-pokedex/blob/master/pokedex.ipynb
+# Zackory / Keras-MNIST-GAN / mnist_gan.py
+##@ https://github.com/Zackory/Keras-MNIST-GAN/blob/master/mnist_gan.py
+# # # # # # # # 
 # Developed by Nathan Shepherd
 
 import os
 import random
 import numpy as np
-import matplotlib.pyplot as plt
-from scipy.misc import imresize
-import IPython.display as ipyd
 import tensorflow as tf
-from PIL import Image
+import matplotlib.pyplot as plt
 
-from keras import optimizers
-from keras.models import Model
-from keras.models import Sequential
 from keras.layers import *
+from keras import initializers
+from keras.optimizers import Adam
+from keras.models import Model, Sequential
+from keras.layers.advanced_activations import LeakyReLU
 
-from skimage.util import view_as_blocks
-from skimage.transform import resize
 from skimage import data
+from skimage.transform import resize
+from skimage.util import view_as_blocks
 
-from libs import utils
 plt.style.use('ggplot')
 
 #from tensorflow.examples.tutorials.mnist import input_data
@@ -83,29 +83,42 @@ class NeuralNetwork:
 
 class FCGAN(NeuralNetwork):
     def __init__(self):        
-        hidden = [IMG_PIXELS**3, IMG_PIXELS**2,
-                  1000, 100, 100]
+        hidden = [IMG_PIXELS**2 * NUM_CHANNELS,
+                  IMG_PIXELS**2, 1000, 100,
+                  100]
         self.discriminator = self.build_model( [self.Discriminator(hidden)],
                                                loss='binary_crossentropy')
         
         hidden = [NOISE_DIM*5, NOISE_DIM*10,
                   IMG_PIXELS**3 * NUM_CHANNELS,
                   IMG_PIXELS**2 * NUM_CHANNELS]
-        self.G = self.Generator(hidden, IMG_SHAPE)
-        self.generator = self.build_model([ self.G ],
-                                          loss='mean_squared_error')
+        
+        self.generator = self.build_model([ self.Generator(hidden) ],
+                                          loss='binary_crossentropy')
 
-        self.adversarial = self.build_model([self.G, self.D],
-                                            loss='mean_squared_error')
+        self.gan = self.adversarial(0.0001)
 
+    def adversarial(self, LR):
+        self.discriminator.trainable = False
+        ganInput = Input(shape=(NOISE_DIM,))
+        
+        x = self.generator(ganInput)
+        ganOutput = self.discriminator(x)
+
+        opt = Adam(lr=LR, beta_1=0.5)
+        gan = Model(inputs=ganInput, outputs=ganOutput)
+        gan.compile(loss='binary_crossentropy',
+                    optimizer=opt, metrics=['accuracy'])
+        self.gan = gan
+        return gan
+        
+        
     def viz_img_gen(self, num_images):
         noise = np.random.uniform(-1.0, 1.0, size=(num_images, NOISE_DIM))
-        img_fakes = self.generator.predict(noise)
+        img_fakes = self.generator.predict(noise).reshape((num_images,)+IMG_SHAPE)
         self.viz_dataset(num_images, images=img_fakes)
 
     def train(self, epochs=10, batch_size=7, save_interval=0):
-        # Random uniform selection distribution for each batch
-        rand_uni = [1/batch_size for i in range(batch_size)]
         
         for ep in range(epochs):
             img_train = [random.choice(self.img_data) for dim in range(batch_size)]
@@ -114,15 +127,15 @@ class FCGAN(NeuralNetwork):
             
             img_fakes = self.generator.predict(noise)
             
-            # Label training data as real (1) or fake (0)
+            
             self.discriminator.trainable = True
-            
-            y = [0.9 for dim in range(batch_size)]
-            d_loss = self.discriminator.train_on_batch(np.array(img_train), y)
 
-            y = [0 for dim in range(batch_size)]
-            d_loss += self.discriminator.train_on_batch(img_fakes, y)
+            X = np.concatenate([img_train, img_fakes])
+            # Images are real (0) or fake (1)
+            y = np.zeros(2* batch_size);
+            y[:batch_size] = 0.9
             
+            d_loss = self.discriminator.train_on_batch(X, y)
 
             # Train Adversarial Model (including generator)
             # TODO: Add freezing in self.D layers when training adversarial
@@ -132,40 +145,41 @@ class FCGAN(NeuralNetwork):
             
             y = [0.9 for dim in range(batch_size)]
             noise = np.random.uniform(-1.0, 1.0, size=[batch_size, NOISE_DIM])
-            a_loss = self.adversarial.train_on_batch(noise, y)
+            a_loss = self.gan.train_on_batch(noise, y)
 
             print("Epoch", ep, "of", epochs,
                   "Discr: [ loss: %f, acc: %f]"% (d_loss[0],d_loss[1]),
-                  "Adv: [loss: %f, acc: %f]"% (a_loss[0], a_loss[1]))
+                  "Adv: [loss: %f, acc:]"% (a_loss[0],))
                   
         print("Completed Training!")
 
     def build_model(self, modules, loss=None,
-                        LR= 0.1, clipvalue= 255.0, decay= 3e-8):
+                        LR= 0.0001, clipvalue= 255.0):
         model = Sequential()
         for mod in modules:
             model.add(mod)
 
         #TODO: Try other optimization
-        optimizer = optimizers.RMSprop(lr=LR, clipvalue=clipvalue, decay= decay)
+        optimizer = Adam(lr=LR, beta_1=0.5)
         
         model.compile(loss=loss, optimizer=optimizer, metrics=['accuracy'])
         return model
 
-    def Generator(self, hidden, output_dim, dropout=0.4):
+    def Generator(self, hidden, dropout=0.4):
         G = Sequential()
         
-        G.add(Dense(hidden[0], input_dim=NOISE_DIM))        
+        G.add(Dense(hidden[0], input_dim=NOISE_DIM,
+                    kernel_initializer=initializers.RandomNormal(stddev=0.02)))    
         G.add(BatchNormalization(momentum = 0.9))
-        G.add(Activation('sigmoid'))
+        G.add(LeakyReLU(alpha=0.2))
         G.add(Dropout(dropout))
 
         for hidden_units in hidden[1:]:
             G.add(Dense(hidden_units))
-            G.add(Activation('relu'))
+            G.add(LeakyReLU(alpha=0.2))
             G.add(Dropout(dropout))
             
-        G.add(Reshape(output_dim))
+        G.add(Reshape(IMG_SHAPE))
         print(G.summary())
 
         self.G = G
@@ -174,17 +188,16 @@ class FCGAN(NeuralNetwork):
         
     def Discriminator(self, hidden, dropout=0.4):
         D = Sequential()
-        input_shape = (IMG_PIXELS,
-                       IMG_PIXELS,
-                       NUM_CHANNELS)
+        input_shape = IMG_SHAPE
 
-        D.add(Dense(hidden[0], input_shape=input_shape))
-        D.add(Activation('relu'))
+        D.add(Dense(hidden[0], input_shape=input_shape,
+                    kernel_initializer=initializers.RandomNormal(stddev=0.02)))
+        D.add(LeakyReLU(alpha=0.2))
         D.add(Dropout(dropout))
 
         for hidden_units in hidden[1:]:
             D.add(Dense(hidden_units))
-            D.add(Activation('relu'))
+            D.add(LeakyReLU(alpha=0.2))
             D.add(Dropout(dropout))
 
         D.add(Flatten())
@@ -210,9 +223,9 @@ TODO:
 '''
 if __name__ == "__main__":
     gan = FCGAN()
-    gan.load_dataset('images/pokemon/sample_of_10/28/')
+    gan.load_dataset('./../../images/pokemon/orig/28/')
     #gan.viz_dataset(10)
-    gan.train(5)
+    gan.train(500)
 
     gan.viz_img_gen(10)
                                 
