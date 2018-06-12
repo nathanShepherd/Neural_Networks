@@ -46,6 +46,15 @@ class NeuralNetwork:
         initial = tf.truncated_normal(shape, stddev=0.1)
         return tf.Variable(initial, name=name)
 
+    def binarize(self, img, threshold=200):
+        for i in range(len(img)):
+            for j in range(len(img[0])):
+                if img[i][j] > threshold:
+                    img[i][j] = 255
+                else:
+                    img[i][j] = 0
+        return img
+
     def load_dataset(self, data_dir):
         img_data = []
         print('Loading dataset')
@@ -56,6 +65,9 @@ class NeuralNetwork:
           if len(filename.split('.')) > 1:
               #img = Image.open(data_dir + filename)
               img = plt.imread(data_dir + filename)
+
+              img = self.binarize(img)
+              
               img_data.append(img)
           
 
@@ -123,7 +135,7 @@ class FCGAN(NeuralNetwork):
         for ep in range(epochs):
             img_train = [random.choice(self.img_data) for dim in range(batch_size)]
 
-            noise = np.random.uniform(-1.0, 1.0, size=(batch_size, NOISE_DIM))
+            noise = np.random.uniform(0, 1, size=(batch_size, NOISE_DIM))
             
             img_fakes = self.generator.predict(noise)
             
@@ -131,16 +143,13 @@ class FCGAN(NeuralNetwork):
             self.discriminator.trainable = True
 
             X = np.concatenate([img_train, img_fakes])
-            # Images are real (0) or fake (1)
+            # Images are real (1) or fake (0)
             y = np.zeros(2* batch_size);
             y[:batch_size] = 0.9
             
             d_loss = self.discriminator.train_on_batch(X, y)
 
-            # Train Adversarial Model (including generator)
-            # TODO: Add freezing in self.D layers when training adversarial
-            # ALSO: Why is the adversarial model training on just noise?
-            #       Should there be a generation component for this step?
+            # Train Adversarial Model (generator)
             self.discriminator.trainable = False
             
             y = [0.9 for dim in range(batch_size)]
@@ -148,8 +157,8 @@ class FCGAN(NeuralNetwork):
             a_loss = self.gan.train_on_batch(noise, y)
 
             print("Epoch", ep, "of", epochs,
-                  "Discr: [ loss: %f, acc: %f]"% (d_loss[0],d_loss[1]),
-                  "Adv: [loss: %f, acc:]"% (a_loss[0],))
+                  "\n\t\tDiscr: [ loss: %f, acc: %f]"% (d_loss[0],d_loss[1]),
+                  "\n\t\t\t\tAdv: [loss: %f, acc: %f]"% (a_loss[0],a_loss[1]))
                   
         print("Completed Training!")
 
@@ -210,10 +219,10 @@ class FCGAN(NeuralNetwork):
 
 NOISE_DIM = 100
 IMG_PIXELS = 28
-NUM_CHANNELS = 3
+NUM_CHANNELS = 1 #3
 IMG_SHAPE = (IMG_PIXELS,
-             IMG_PIXELS,
-             NUM_CHANNELS)
+             IMG_PIXELS,)
+             #NUM_CHANNELS)
 
 '''
 TODO:
@@ -223,9 +232,9 @@ TODO:
 '''
 if __name__ == "__main__":
     gan = FCGAN()
-    gan.load_dataset('./../../images/pokemon/orig/28/')
-    #gan.viz_dataset(10)
-    gan.train(500)
+    gan.load_dataset('./../../images/pokemon/orig/monochrome/28/')
+    gan.viz_dataset(7)
+    gan.train(100)
 
     gan.viz_img_gen(10)
                                 
