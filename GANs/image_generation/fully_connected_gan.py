@@ -234,7 +234,7 @@ if __name__ == "__main__":
     gan = FCGAN()
     gan.load_dataset('./../../images/pokemon/orig/monochrome/28/')
     gan.viz_dataset(7)
-    gan.train(100)
+    gan.train(1)
 
     gan.viz_img_gen(10)
                                 
