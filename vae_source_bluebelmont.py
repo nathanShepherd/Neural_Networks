@@ -43,9 +43,25 @@ class NeuralNetwork:
                     img[i][j] = 0
         return img
 
-    def load_dataset(self, data_dir):
-        img_data = []
+    def load_dataset(self, data_dir, mnist=False):
+        self.img_data = []
         print('Loading dataset')
+        if mnist:
+            for i, sub_dir in enumerate(os.listdir(data_dir)):
+                print(i*100.0/len(os.listdir(data_dir)))
+                sub_dir += '/'
+                
+                for k, filename in enumerate(os.listdir(data_dir + sub_dir)):
+                    if k % (700) == 0:
+                      print('-->',k*100.0/(len(os.listdir(data_dir + sub_dir))))
+                    img = plt.imread(data_dir + sub_dir + filename)
+
+                    #img = self.binarize(img)
+                  
+                    self.img_data.append(img)
+
+            print('Loaded dataset successfully'); return 0
+            
         for i, filename in enumerate(os.listdir(data_dir)):
           if i % (50) == 0:
               print(i*100/(len(os.listdir(data_dir))))
@@ -54,12 +70,10 @@ class NeuralNetwork:
               #img = Image.open(data_dir + filename)
               img = plt.imread(data_dir + filename)
 
-              img = self.binarize(img)
+              #img = self.binarize(img)
               
-              img_data.append(img)
+              self.img_data.append(img)
           
-
-        self.img_data = img_data
         print('Loaded dataset successfully')
 
         
@@ -155,7 +169,9 @@ class VarAutoEnc(NeuralNetwork):
             if (i % log_interval) == 0:
                 vlb_eval = self.variational_lower_bound.eval(feed_dict={self.X: x_batch})
                 deriv_vlb = prev_vlb - vlb_eval; prev_vlb = vlb_eval
-                print("Iteration: {}, Loss: {}, Delta: {}".format(i, int(vlb_eval), int(deriv_vlb)))
+                print("Iteration: %d | %d"% (i, epochs),
+                      "Loss: %d"    % int(vlb_eval),
+                      "Delta: %d"   % int(deriv_vlb))
                 variational_lower_bound_array.append(vlb_eval)
                 log_likelihood_array.append(np.mean(self.log_likelihood.eval(feed_dict={self.X: x_batch})))
                 KL_term_array.append(np.mean(self.KL_term.eval(feed_dict={self.X: x_batch})))
@@ -196,7 +212,8 @@ IMG_SHAPE = (1, IMG_PIXELS)
 
 if __name__ == "__main__":
     vae = VarAutoEnc()
-    vae.load_dataset('images/pokemon/orig/monochrome/28/')
+    #vae.load_dataset('images/pokemon/orig/monochrome/28/')
+    vae.load_dataset('images/mnist/mnist_png/training/', mnist=True)
     vae.viz_dataset(7)
-    vae.train(10)
+    vae.train(10 ** 6)
 
