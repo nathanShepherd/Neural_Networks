@@ -154,7 +154,7 @@ class VarAutoEnc(NeuralNetwork):
 
         
 
-    def train(self, epochs, batch_size=800, log_interval=10):
+    def train(self, epochs, batch_size=100, log_interval=100):
         iteration_array = [i*log_interval for i in range(int(epochs/log_interval))]
         variational_lower_bound_array = []
         log_likelihood_array = []
@@ -209,11 +209,12 @@ IMG_SHAPE = (1, IMG_PIXELS)
              #IMG_PIXELS,)
              #NUM_CHANNELS)
 
+# TODO: add the ability to save/load trained models
 
 if __name__ == "__main__":
     vae = VarAutoEnc()
     #vae.load_dataset('images/pokemon/orig/monochrome/28/')
     vae.load_dataset('images/mnist/mnist_png/training/', mnist=True)
     vae.viz_dataset(7)
-    vae.train(10 ** 6)
+    vae.train(10 ** 5)
 
