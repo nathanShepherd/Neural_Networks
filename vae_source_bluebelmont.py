@@ -38,7 +38,7 @@ class NeuralNetwork:
         for i in range(len(img)):
             for j in range(len(img[0])):
                 if img[i][j] > threshold:
-                    img[i][j] = 255
+                    img[i][j] = 1
                 else:
                     img[i][j] = 0
         return img
@@ -70,7 +70,7 @@ class NeuralNetwork:
               #img = Image.open(data_dir + filename)
               img = plt.imread(data_dir + filename)
 
-              #img = self.binarize(img)
+              img = self.binarize(img)
               
               self.img_data.append(img)
           
@@ -133,6 +133,7 @@ class VarAutoEnc(NeuralNetwork):
         
 
     def Encoder(self, hidden):
+        # TODO: Pixel to convolutions
         # Pixel to Hidden space
         W_enc = self.weight_variable([self.img_pixels, hidden[0]], 'W_enc')
         b_enc = self.bias_variable([hidden[0]], 'b_enc')
@@ -209,12 +210,12 @@ IMG_SHAPE = (1, IMG_PIXELS)
              #IMG_PIXELS,)
              #NUM_CHANNELS)
 
-# TODO: add the ability to save/load trained models
-
+# TODO: Add the ability to save/load trained models
+# TODO: Train for 10 ** 6 epochs on GPU or in the cloud
 if __name__ == "__main__":
     vae = VarAutoEnc()
-    #vae.load_dataset('images/pokemon/orig/monochrome/28/')
-    vae.load_dataset('images/mnist/mnist_png/training/', mnist=True)
-    vae.viz_dataset(7)
-    vae.train(10 ** 5)
+    vae.load_dataset('images/pokemon/orig/monochrome/28/')
+    #vae.load_dataset('images/mnist/mnist_png/training/', mnist=True)
+    vae.viz_dataset(10)
+    vae.train(10 ** 4)#10 ** 5
 
