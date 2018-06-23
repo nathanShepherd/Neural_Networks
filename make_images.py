@@ -7,10 +7,10 @@ import os
 
 use_color = False
 output_size = (28, 28)
-file_extension = '.bmp'
-display_before_save = False
+file_extension = '.png'
+display_before_save = True
 
-input_dir = 'images/pokemon/orig/'
+input_dir = 'images/pokemon/sample_of_10/'
 
 str_size = str(output_size[0])
 output_subdir = input_dir[:-1]+'/'
