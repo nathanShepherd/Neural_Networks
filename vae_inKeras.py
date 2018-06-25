@@ -52,7 +52,8 @@ class Base_Class():
               img = self.binarize(img)
               
               self.img_data.append(img)
-          
+
+        self.img_data = np.array(self.img_data)
         print('Loaded dataset successfully')
 
         
@@ -77,16 +78,25 @@ class VarAutoEnc(Base_Class):
     def __init__(self):
         super().__init__()
 
-        x, z_mean, z_log_sigma = self.Encoder([256])
-        x_decoded_mean, dec_mu, decoder_input = self.Decoder([256], z_mean, z_log_sigma)
+        encoder_hidden = [100]
+        decoder_hidden = [100]
 
-        encoder = Model(x, z_mean)
+        x, z_mean, z_log_sigma = self.Encoder(encoder_hidden)
+        
+        x_decoded_mean, dec_mu, decoder_input \
+                        = self.Decoder(decoder_hidden, z_mean, z_log_sigma)
 
-        generator = Model(decoder_input, dec_mu)
+        self.encoder = Model(x, z_mean)
+
+        self.generator = Model(decoder_input, dec_mu)
 
         self.vae = Model(x, x_decoded_mean)
         self.vae.compile(optimizer='rmsprop', loss=self.vae_loss)
-        
+
+    def train(self, x, epochs, test_x=None, test_y=None):
+        self.vae.fit(x, x, epochs=epochs, batch_size=BATCH_SIZE,
+                     verbose=2)
+                     #validation_data=(test_x, test_y))        
 
     def vae_loss(self, x, x_decoded_mean):
         xent_loss = objectives.binary_crossentropy(x, x_decoded_mean)
@@ -116,24 +126,68 @@ class VarAutoEnc(Base_Class):
     def Decoder(self, hidden, z_mean, z_log_sigma, non_lin='relu'):
         z = Lambda(self.sampling, output_shape=(NOISE_DIM,))([z_mean, z_log_sigma])
 
-        decoder_h = Dense(hidden[0], activation=non_lin)
-        for num_dims in hidden[1:]:
-            decoder_h = Dense(num_dims, activation=non_lin)(decoder_h)
-            
-        decoder_mean = Dense(IMG_PIXELS, activation='sigmoid')
+        decoder_h = Dense(hidden[-1], activation=non_lin)
+        
+        decoder_mean = Dense(IMG_PIXELS, activation=non_lin)
         h_decoded = decoder_h(z)
-        x_decoded_mean = decoder_mean(h_decoded)
 
+        for layer in hidden[:-1]:
+            h_decoded = Dense(layer, activation=non_lin)(h_decoded)
+
+        x_decoded_mean = decoder_mean(h_decoded)
+        
         decoder_input = Input(shape=(NOISE_DIM,))
         dec_h = decoder_h(decoder_input)
+
+        
+        
         dec_mu = decoder_mean(dec_h)
         
+        
         return x_decoded_mean, dec_mu, decoder_input
+
+    def viz_generation(self, mu, sigma):
+        z_sample = np.random.normal(mu, sigma, (1, NOISE_DIM))
+        x_decoded = self.generator.predict(z_sample)
+        img = x_decoded[0].reshape(IMG_HEIGHT, IMG_HEIGHT)
+
+        plt.figure(figsize=(8, 8))
+        plt.imshow(img)
+        plt.show()
+
+    def viz_2d_latent_space(self, test_x, test_y):
+        # REQUIRES: NOISE_DIM must be 2
+        # Results are more significant on unseen data
+        x_test_encoded = self.encoder.predict(test_x, batch_size=BATCH_SIZE)
+        plt.figure(figsize=(6, 6))
+        plt.scatter(x_test_encoded[:, 0], x_test_encoded[:, 1], c=test_y)
+        plt.colorbar()
+        plt.show()
+
+    def viz_2d_manifold(self, num, img_size, epsilon_std=0.01):
+        figure = np.zeros((img_size * num, img_size * num))
+        # Sampling num points within [-15, 15] standard deviations
+        grid_x = np.linspace(-15, 15, num)
+        grid_y = np.linspace(-15, 15, num)
+
+        for i, yi in enumerate(grid_y):
+            for j, xi in enumerate(grid_y):
+                z_sample = np.array([[xi, yi]]) * epsilon_std
+                x_decoded = self.generator.predict(z_sample)
+                img = x_decoded[0].reshape(IMG_HEIGHT, IMG_HEIGHT)
+                figure[i * IMG_HEIGHT: (i + 1) * IMG_HEIGHT,
+                       j * IMG_HEIGHT: (j + 1) * IMG_HEIGHT] = img
+
+        plt.figure(figsize=(8, 8))
+        plt.imshow(figure)
+        plt.show()
+        
         
 
 
 NOISE_DIM = 100
-BATCH_SIZE = 3
+BATCH_SIZE = 128
+IMG_HEIGHT = 28
 IMG_PIXELS = 28*28
 IMG_SHAPE = (1, IMG_PIXELS)
              #IMG_PIXELS,)
@@ -141,10 +195,21 @@ IMG_SHAPE = (1, IMG_PIXELS)
 
 if __name__ == "__main__":
     vae = VarAutoEnc()
-    vae.load_dataset('images/pokemon/sample_of_10/monochrome/28/')
+    #vae.load_dataset('images/pokemon/sample_of_10/monochrome/28/')
     #vae.load_dataset('images/pokemon/orig/monochrome/28/')
-    #vae.load_dataset('images/mnist/mnist_png/training/', mnist=True)
-    vae.viz_dataset(10)
+    vae.load_dataset('images/mnist/mnist_png/training/', mnist=True)
+    #vae.viz_dataset(10)
+
+    train_x = np.array([img.flatten() for img in vae.img_data])
+    train_x = train_x[:BATCH_SIZE*int(len(train_x)/BATCH_SIZE)]
+    vae.train(train_x, 100)
+
+    #vae.viz_2d_manifold(15, IMG_HEIGHT, epsilon_std=1)
+
+    vae.viz_generation(0, 0)
+
+    #y_train = [1 for data_pt in train_x]
+    #vae.viz_2d_latent_space(train_x, y_train)
 
 
 
