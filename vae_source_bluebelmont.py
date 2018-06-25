@@ -1,8 +1,11 @@
+##
+# Variational-Autoencoder source code:
 # bluebelmont/Variational-Autoencoder
-# https://github.com/bluebelmont/Variational-Autoencoder/blob/master/Variational%20Autoencoder.ipynb
-#
+# @ https://bit.ly/2Kh4FwG
+##
 # Related work: Optimizing the Latent Space of Generative Networks
-# https://arxiv.org/pdf/1707.05776.pdf
+# @ https://arxiv.org/pdf/1707.05776.pdf
+##
 # # # # # # # # 
 # Developed by Nathan Shepherd
 
