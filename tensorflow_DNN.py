@@ -1,7 +1,7 @@
 #%#%#%#%#%#% Neural Network #%#%#%#%#%#%
 import tensorflow as tf
 from math import floor
-
+ 
 class NeuralComputer:
     def __init__(self, x, y):
         self.x = x

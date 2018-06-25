@@ -1,5 +1,5 @@
 # Quickly deploy a keras NN to any given specifications
-
+ 
 import numpy as np
 from sklearn.datasets.samples_generator import make_blobs
 
