@@ -1,6 +1,6 @@
 ##
 # Variational-Autoencoder source code:
-# bluebelmont/Variational-Autoencoder
+# GitHub / bluebelmont / Variational-Autoencoder
 # @ https://bit.ly/2Kh4FwG
 ##
 # Related work: Optimizing the Latent Space of Generative Networks
