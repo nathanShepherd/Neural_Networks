@@ -2,6 +2,11 @@
 # Convolutional Neural Networks Tutorial in TensorFlow
 # @ http://adventuresinmachinelearning.com/convolutional-neural-networks-tutorial-tensorflow/
 ##
+# GitHub / bluebelmont / Variational-Autoencoder
+# @ https://bit.ly/2Kh4FwG
+##
+# Related work: Optimizing the Latent Space of Generative Networks
+# @ https://arxiv.org/pdf/1707.05776.pdf
 # # # # # # # # 
 # Developed by Nathan Shepherd
 
@@ -87,13 +92,18 @@ class VarAutoEnc(NeuralNetwork):
     def __init__(self): 
         self.img_pixels = IMG_PIXELS
         self.Encoder()
-        self.Decoder([512])
+        self.Decoder([256, 512])
         self.Init_Optimizer()
 
         init = tf.global_variables_initializer()
         self.sess = tf.InteractiveSession()
-        saver = tf.train.Saver()
+        self.saver = tf.train.Saver()
         self.sess.run(init)
+
+        # For logging
+        self.variational_lower_bound_array = []
+        self.log_likelihood_array = []
+        self.KL_term_array = []
 
     def Init_Optimizer(self):
         # We want to maximize this lower bound,
@@ -114,13 +124,14 @@ class VarAutoEnc(NeuralNetwork):
         b_dec = self.bias_variable([hidden[0]], 'b_dec')
         h_dec = tf.nn.relu(tf.matmul(self.z, W_dec) + b_dec)
 
-        #W_dec2 = self.weight_variable([hidden[0], hidden[1]], 'W_dec2')
-        #b_dec2 = self.bias_variable([hidden[1]], 'b_dec2')
-        #h_dec2 = tf.nn.relu(tf.matmul(h_dec, W_dec2) + b_dec2)
+        # More layers stabalize training at the cost of compute time
+        W_dec2 = self.weight_variable([hidden[0], hidden[1]], 'W_dec2')
+        b_dec2 = self.bias_variable([hidden[1]], 'b_dec2')
+        h_dec2 = tf.nn.relu(tf.matmul(h_dec, W_dec2) + b_dec2)
 
-        W_reconstruct = self.weight_variable([hidden[0], self.img_pixels], 'W_reconstruct')
+        W_reconstruct = self.weight_variable([hidden[1], self.img_pixels], 'W_reconstruct')
         b_reconstruct = self.bias_variable([self.img_pixels], 'b_reconstruct')
-        self.reconstruction = tf.nn.sigmoid(tf.matmul(h_dec, W_reconstruct) + b_reconstruct)
+        self.reconstruction = tf.nn.sigmoid(tf.matmul(h_dec2, W_reconstruct) + b_reconstruct)
 
     def Encoder(self):
         # Inputs: Monochrome Pixels
@@ -139,18 +150,18 @@ class VarAutoEnc(NeuralNetwork):
         dense_layer1 = tf.matmul(flattened, wd1) + bd1
         dense_layer1 = tf.nn.relu(dense_layer1)
 
-        wd2 = self.weight_variable([1000, 256], name='wd2')
-        bd2 = self.bias_variable([256], name='bd2')
+        wd2 = self.weight_variable([1000, 512], name='wd2')
+        bd2 = self.bias_variable([512], name='bd2')
         h_enc = tf.matmul(dense_layer1, wd2) + bd2
         h_enc = tf.nn.relu(h_enc)
 
         # Hidden to the mean of a latent space
-        W_mu = self.weight_variable([256, NOISE_DIM], 'W_mu')
+        W_mu = self.weight_variable([512, NOISE_DIM], 'W_mu')
         b_mu = self.bias_variable([NOISE_DIM], 'b_mu')
         self.mu = tf.matmul(h_enc, W_mu) + b_mu
 
         # Hidden to the log(stddev) of a latent space
-        W_logstd = self.weight_variable([256, NOISE_DIM], 'W_logstd')
+        W_logstd = self.weight_variable([512, NOISE_DIM], 'W_logstd')
         b_logstd = self.bias_variable([NOISE_DIM], 'b_logstd')
         self.logstd = tf.matmul(h_enc, W_logstd) + b_logstd
 
@@ -181,13 +192,9 @@ class VarAutoEnc(NeuralNetwork):
                                    strides=strides, padding='SAME')
         return out_layer
 
-    def train(self, epochs, batch_size=100, log_interval=10):
-        iteration_array = [i*log_interval for i in range(int(epochs/log_interval))]
-        variational_lower_bound_array = []
-        log_likelihood_array = []
-        KL_term_array = []
-
+    def train(self, epochs, batch_size=100, log_interval=10):        
         prev_vlb = 0
+        
         for i in range(epochs):
             img_train = [np.array(random.choice(self.img_data)['x']) \
                                                   for dim in range(batch_size)]
@@ -200,14 +207,14 @@ class VarAutoEnc(NeuralNetwork):
                 print("Iteration: %d | %d"% (i, epochs),
                       "Loss: %d"    % int(vlb_eval),
                       "Delta: %d"   % (deriv_vlb))
-                variational_lower_bound_array.append(vlb_eval)
-                log_likelihood_array.append(np.mean(self.log_likelihood.eval(feed_dict={self.X: x_batch})))
-                KL_term_array.append(np.mean(self.KL_term.eval(feed_dict={self.X: x_batch})))
+                self.variational_lower_bound_array.append(vlb_eval)
+                self.log_likelihood_array.append(np.mean(self.log_likelihood.eval(feed_dict={self.X: x_batch})))
+                self.KL_term_array.append(np.mean(self.KL_term.eval(feed_dict={self.X: x_batch})))
 
         plt.figure()
-        plt.plot(iteration_array, variational_lower_bound_array)
-        plt.plot(iteration_array, KL_term_array)
-        plt.plot(iteration_array, log_likelihood_array)
+        plt.plot(self.variational_lower_bound_array)
+        plt.plot(self.KL_term_array)
+        plt.plot(self.log_likelihood_array)
         plt.legend(['Variational Lower Bound',
                     'KL divergence',
                     'Log Likelihood'])#, bbox_to_anchor=(1.05, 1), loc=2)
@@ -228,6 +235,27 @@ class VarAutoEnc(NeuralNetwork):
         
         self.viz_dataset(num, images=images)
 
+    def viz_generation(self, mu, sigma):# Ported for Keras
+        z_sample = np.random.normal(mu, sigma, (1, NOISE_DIM))
+        x_decoded = self.generator.predict(z_sample)
+        img = x_decoded[0].reshape(IMG_HEIGHT, IMG_HEIGHT)
+
+        plt.figure(figsize=(8, 8))
+        plt.imshow(img)
+        plt.show()
+
+    def save(self, in_str):
+        self.saver.save(self.sess, in_str)
+
+    def load(self, graph):
+        self.sess = tf.Session()
+        self.saver = tf.train.import_meta_graph(graph + '.meta')
+        self.saver.restore(self.sess, tf.train.latest_checkpoint('./'))
+        all_vars = tf.get_collection('vars')
+        for v in all_vars:
+            v_ = self.sess.run(v)
+            print(v_)
+
     
 
 NOISE_DIM = 100
@@ -235,18 +263,19 @@ IMG_PIXELS = 28*28
 NUM_CHANNELS = 1 #3
 IMG_SHAPE = (None, 28, 28)
 LEARNING_RATE = 0.001
-BATCH_SIZE = 100
+BATCH_SIZE = 128
 
 '''
 TODO:
     Make an epoch run over the entire dataset once
-    Save/load trained models using pickle of tf.saver
+    Support functions that add and save (using pkl?)
 '''
 if __name__ == "__main__":
     vae = VarAutoEnc()
     #vae.load_dataset('images/pokemon/orig/monochrome/28/')
     vae.load_mnist('images/mnist/mnist_png/training/', compressed=True)
-    vae.train(1000 * 10)#1000 is entire dataset if BATCH_SIZE is ~64
+    vae.train(10)#1000 is entire dataset if BATCH_SIZE is ~64
+    
     
 
 
