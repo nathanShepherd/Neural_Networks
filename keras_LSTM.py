@@ -5,16 +5,34 @@ import random
 import numpy as np
 import matplotlib.pyplot as plt
 
+from keras.models import Sequential
+from keras.layers import Dense, LSTM
+plt.style.use('ggplot')
+
 class DQN:
     def __init__(self, obs_space, num_actions, observation):
-
+        
         self.obs_space = obs_space
         self.num_actions = num_actions
+
+    def define_model(self, hidden=[16, 8], batch_size=1, look_back=1):
+        #Source: https://bit.ly/2ElxXHE
+        self.model = Sequential()
+        self.model.add(LSTM(hidden,
+                            stateful=True, return_sequences=True,
+                            batch_input_shape=(batch_size,look_back,self.obs_space)))
+        self.model.add(LSTM(hidden,
+                            stateful=True # State must be reset after every epoch
+                            batch_input_shape=(batch_size,look_back,self.obs_space)))
+        self.model.add(Dense(self.num_actions))
+        self.model.compile(loss='binary_crossentropy', optimizer='adam')
+        
 
     def get_action(self, state):
         #print(state)
         #string_state = ''.join(str(int(elem)) for elem in self.digitize(state))
         #return max_dict( self.Q[string_state] )[0]
+        a = self.model.predict(state)
         return 0
 
     def evaluate_utility(self, state):
@@ -32,6 +50,9 @@ class DQN:
 
         #state = ''.join(str(int(elem)) for elem in self.digitize(state))
         #self.Q[state][action] = state_value
+
+        model.fit(trainX, trainY, epochs=1, batch_size=batch_size, verbose=2, shuffle=False)
+	model.reset_states()
         
     
 def play_episode(agent, act_space, epsilon=.2, viz=False):
