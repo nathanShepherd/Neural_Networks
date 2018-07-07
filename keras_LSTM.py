@@ -11,49 +11,67 @@ plt.style.use('ggplot')
 
 class DQN:
     def __init__(self, obs_space, num_actions, observation):
-        
-        self.obs_space = obs_space
+
+        self.prev_action = 0
+        self.obs_space = obs_space + 1
         self.num_actions = num_actions
 
-    def define_model(self, hidden=[16, 8], batch_size=1, look_back=1):
+        self.define_model()
+        
+
+    def define_model(self, hidden=[128, 64], batch_size=1, look_back=1):
         #Source: https://bit.ly/2ElxXHE
         self.model = Sequential()
-        self.model.add(LSTM(hidden,
+        self.model.add(LSTM(hidden[0],
                             stateful=True, return_sequences=True,
                             batch_input_shape=(batch_size,look_back,self.obs_space)))
-        self.model.add(LSTM(hidden,
-                            stateful=True # State must be reset after every epoch
+        self.model.add(LSTM(hidden[1],
+                            stateful=True, # State must be reset after every epoch
                             batch_input_shape=(batch_size,look_back,self.obs_space)))
-        self.model.add(Dense(self.num_actions))
-        self.model.compile(loss='binary_crossentropy', optimizer='adam')
-        
+        self.model.add(Dense(1, activation='tanh'))
+        self.model.compile(loss='mse', optimizer='adam')
 
+    def reshape(self, state):
+        s = np.append(state, self.prev_action)
+        s = np.reshape(s, (1, 1, self.obs_space))
+        return s
+        
     def get_action(self, state):
-        #print(state)
-        #string_state = ''.join(str(int(elem)) for elem in self.digitize(state))
-        #return max_dict( self.Q[string_state] )[0]
-        a = self.model.predict(state)
-        return 0
+        actions = []
+        for a in range(self.num_actions):
+            self.prev_action = a
+            _state = self.reshape(state)
+            actions.append(self.model.predict(_state))
+        action = np.argmax(actions)
+        self.prev_action = action
+        return action
 
     def evaluate_utility(self, state):
-        #string_state = ''.join(str(int(elem)) for elem in self.digitize(state))
-        #return max_dict( self.Q[string_state] )[1]
-        return 0
+        actions = []
+        for a in range(self.num_actions):
+            self.prev_action = a
+            _state = self.reshape(state)
+            actions.append(self.model.predict(_state))
+        value = max(actions)
+        return value
 
     def update_policy(self, state, state_next, action, reward):
-        state_value = self.evaluate_utility(state)
+        state_value = self.model.predict(self.reshape(state))
         
-        action = self.get_action(state)
         reward_next = self.evaluate_utility(state_next)
 
         state_value += ALPHA*(reward + GAMMA * reward_next - state_value)
 
+        self.prev_action = action
+        state = self.reshape(state)
+        
+        self.model.fit(state, state_value, epochs=1,
+                       batch_size=1, verbose=0, shuffle=False)
+        
+
         #state = ''.join(str(int(elem)) for elem in self.digitize(state))
         #self.Q[state][action] = state_value
-
-        model.fit(trainX, trainY, epochs=1, batch_size=batch_size, verbose=2, shuffle=False)
-	model.reset_states()
-        
+        #%#%#%#%#%
     
 def play_episode(agent, act_space, epsilon=.2, viz=False):
     state = env.reset()
@@ -81,15 +99,14 @@ def play_episode(agent, act_space, epsilon=.2, viz=False):
         
             if  num_frames < 200:
                 reward = -300
-
-        action_next = agent.get_action(state_next)
         
         agent.update_policy(state, state_next, action, reward)
               
         state = state_next
         num_frames += 1
         
-
+    agent.model.reset_states()
+    
     return total_reward, num_frames
 
 def train(obs_space, act_space=None,epochs=2000, obs=False, agent=False):
@@ -102,7 +119,7 @@ def train(obs_space, act_space=None,epochs=2000, obs=False, agent=False):
         epsilon = max(EPSILON_MIN, np.tanh(-ep/(epochs/2))+ 1)
 
         ep_reward, num_frames = play_episode(agent, act_space, epsilon, viz=obs)
-        if ep % 100 == 0:
+        if ep % 5 == 0:
             print("Ep: {} | {}".format(ep, epochs),
                   "%:", round(ep*100/epochs, 2),
                   "Epsilon:", round(epsilon, 4),
@@ -162,6 +179,12 @@ EPOCHS = 2000
 obs_space = 4
 observe_training = False
 action_space = env.action_space.n
+
+'''
+TODO:
+    Add frame buffer for sequence prediction
+'''
+
 
 if __name__ == "__main__":
     episode_rewards, _, Agent = train(obs_space,
