@@ -1,0 +1,2 @@
+main: nn.h nn.cpp main.cpp
+	g++ -o a.out nn.cpp
