@@ -1,2 +1,1 @@
-main: nn.h nn.cpp main.cpp
-	g++ -o a.out nn.cpp
+g++ -std=c++11 -o nn main.cpp nn.cpp
