@@ -1,4 +1,8 @@
 #include "nn.h"
+#include "math.h"
+#include <cstdlib>
+#include <iostream>
+#include <algorithm>
 /*
  * @ https://medium.freecodecamp.org/building-a-3-layer-neural-network-from-scratch-99239c4af5d3
  *
@@ -73,7 +77,68 @@ def backward_prop(weights, biases, cache,y):
     grads = {'dW3':dW3, 'db3':db3, 'dW2':dW2,'db2':db2,'dW1':dW1,'db1':db1}
     return grads 
 */
-int train(vector<vector<double>>& data, vector<int>& labels) {
+
+void NeuralNetwork::gen_matrix(bool gen_bias, int length, int depth) {
+  vector<vector<double>> layer;
+  layer.reserve(length);
+
+  for (int i = 0; i < length; i++) {
+    vector<double> inv(depth);
+    generate(inv.begin(), inv.end(), rand);
+    layer.push_back(inv);
+  }
+  if (gen_bias) {
+    biases.push_back(layer[0]);
+  }
+  else {
+    weights.push_back(layer);
+  }
+}
+
+NeuralNetwork::NeuralNetwork(int layers, int input_size, int output_size) {
+  // layers includes input and output layers
+  // ie. 3 layers has one hidden layer
+
+  // input layer
+  bool gen_bias = true;
+  bool gen_weight = false;
+
+  gen_matrix(gen_weight, input_size, 
+             (input_size * layers) / output_size);
+
+  gen_matrix(gen_bias, 1, (input_size * layers) / output_size);
+  layers -= 1;
+
+  // hidden layers
+  while (layers > 1) {
+    gen_matrix(gen_weight, weights.back().size(),
+               (weights.back().size() * layers) / output_size);
   
+    gen_matrix(gen_bias, 1, (biases.back().size() * layers) / output_size);
+    layers -= 1;
+  } 
+
+  // output layer
+  gen_matrix(gen_weight, weights.back().size(),output_size);
+  gen_matrix(gen_bias, 1, output_size);
+
+}
+
+void NeuralNetwork::forward() {
+  cout << "Forwards\n";
+
+  // TODO: write a dot product script
+}
+void NeuralNetwork::backprop() {
+}
+
+
+
+
+
+int train(NeuralNetwork net, 
+          vector<vector<double>>& data, vector<int>& labels) {
+
+  net.forward();
   return 1;
 }

@@ -5,13 +5,16 @@
 
 using namespace std;
 
-void read_input(vector<vector<double>>& data, vector<int>& labels);
+int read_input(vector<vector<double>>& data, vector<int>& labels);
 
 int main() {
   vector<vector<double>> data;
   vector<int> labels;
-  read_input(data, labels);
-  train(data, labels); 
+  int num_classes = read_input(data, labels);
+
+  int layers = 3;  
+  NeuralNetwork net(layers, data[0].size(), num_classes);
+  train(net, data, labels); 
 /*
   for (int l: labels) {
     cout << l << " ";
@@ -21,7 +24,7 @@ int main() {
   return 0;
 }
 
-void read_input(vector<vector<double>>& data, vector<int>& labels) {
+int read_input(vector<vector<double>>& data, vector<int>& labels) {
   ifstream inf;
   inf.open("input.txt");
   int header;
@@ -38,7 +41,8 @@ void read_input(vector<vector<double>>& data, vector<int>& labels) {
     data.push_back(datum);
   }
 
-  inf >> header;// NumClasses  
+  int num_classes;
+  inf >> num_classes;// NumClasses  
 
   double temp;
   for (vector<double>& vect: data) {
@@ -50,4 +54,5 @@ void read_input(vector<vector<double>>& data, vector<int>& labels) {
     inf >> header;// header is label
     labels.push_back(header);
   }
+  return num_classes;
 }
