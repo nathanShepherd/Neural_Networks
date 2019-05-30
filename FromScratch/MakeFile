@@ -1,1 +1,2 @@
-g++ -std=c++11 -o nn main.cpp nn.cpp
+optimized: g++ -std=c++11 -O3 -DNDEBUG -o nn main.cpp nn.cpp
+debug: g++ -std=c++11 -g3 -DDEBUG -o nn main.cpp nn.cpp

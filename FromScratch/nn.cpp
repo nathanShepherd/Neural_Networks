@@ -1,5 +1,6 @@
 #include "nn.h"
 #include "math.h"
+#include <numeric>
 #include <cstdlib>
 #include <iostream>
 #include <algorithm>
@@ -76,15 +77,28 @@ def backward_prop(weights, biases, cache,y):
     # Store gradients
     grads = {'dW3':dW3, 'db3':db3, 'dW2':dW2,'db2':db2,'dW1':dW1,'db1':db1}
     return grads 
+
+def update_parameters(model,grads,learning_rate):\n",
+    # Update parameters\n",
+    W1 -= learning_rate * grads['dW1']\n",
+    b1 -= learning_rate * grads['db1']\n",
+    W2 -= learning_rate * grads['dW2']\n",
+    b2 -= learning_rate * grads['db2']\n",
+    W3 -= learning_rate * grads['dW3']\n",
+    b3 -= learning_rate * grads['db3']\n", 
+
 */
 
+double rand_gen() {
+  return rand() % 1000 - 500;
+}
 void NeuralNetwork::gen_matrix(bool gen_bias, int length, int depth) {
   vector<vector<double>> layer;
   layer.reserve(length);
 
   for (int i = 0; i < length; i++) {
     vector<double> inv(depth);
-    generate(inv.begin(), inv.end(), rand);
+    generate(inv.begin(), inv.end(), rand_gen);
     layer.push_back(inv);
   }
   if (gen_bias) {
@@ -124,11 +138,104 @@ NeuralNetwork::NeuralNetwork(int layers, int input_size, int output_size) {
 
 }
 
-void NeuralNetwork::forward() {
+void NeuralNetwork::dot(vector<vector<double>>& lhs,
+                        vector<vector<double>>& rhs,
+                        vector<vector<double>>& product) {
+  product.clear();
+  for (size_t i = 0; i < lhs.size(); ++i) {
+    vector<double> prod;
+    //prod.reserve(rhs.size());
+    for (size_t j = 0; j < rhs.size(); ++j) {
+      /*
+      double summ = 0;
+      for (size_t k = 0; k < rhs[0].size(); ++k) {
+        //cout << i << " " << j << " " << k << endl; // debug
+        //cout << "::: " << lhs[i][k] << " " << rhs[j][k] << endl;//debug
+        summ += lhs[i][k] * rhs[j][k];
+      }
+      prod.push_back(summ);
+      */
+      prod.push_back(inner_product(lhs[i].begin(), lhs[i].end(),
+                                   rhs[j].begin(), 0));
+    }
+    //if multiple rows on lhs, pushback new vector to product
+    product.push_back(prod);
+  }
+}
+
+void NeuralNetwork::mat_sum_activate(vector<vector<double>>& lhs,
+                                     vector<double>& rhs) {
+  // Take the sum of lhs and rhs then apply activation to lhs
+  for (size_t row = 0; row < lhs.size(); ++row) {
+    for (size_t col = 0; col < rhs.size(); ++col) {
+      lhs[row][col] += rhs[col];
+      lhs[row][col] = tanh(lhs[row][col]);
+    }
+  }
+}
+
+void NeuralNetwork::softmax(vector<vector<double>>& grads) {
+  // Softmax
+  // Assumes grads is 1D
+  double sum;
+  vector<double> exp_v;
+  exp_v.reserve(grads[0].size());
+  for (double dW: grads[0]) {
+    exp_v.push_back(exp(dW));
+    sum += exp_v.back();
+  }
+  for (size_t i = 0; i < grads[0].size(); ++i) {
+    grads[0][i] = exp_v[i] / sum;
+  }
+}
+
+
+void NeuralNetwork::print_weights() {
+  for (vector<vector<double>> w: weights) {
+    for (vector<double> vect: w) {
+      for (double d: vect) {
+        cout << d << " ";
+      }
+      cout << endl;
+    }
+    cout << "********************\n";
+  }
+}
+void NeuralNetwork::forward(const vector<vector<double>>& input) {
   cout << "Forwards\n";
 
-  // TODO: write a dot product script
+  w_grads.clear();
+  //b_grads.clear(); not needed
+  w_grads.push_back(input);
+  for (size_t i = 0; i < weights.size() - 1; ++i) {
+    vector<vector<double>> grads;
+    dot(w_grads.back(), weights[i], grads);
+    mat_sum_activate(grads, biases[i]);
+    w_grads.push_back(grads);
+  }
+
+  vector<vector<double>> grads;
+  dot(w_grads.back(), weights.back(), grads);
+
+  mat_sum_activate(grads, biases.back());
+
+  softmax(grads);
+  w_grads.push_back(grads);
+/*
+  cout << "Output: ";// debug
+  for (vector<double> v: grads) {
+    for (double n: v) {
+      cout << n << " i ";
+    }
+    cout << endl;
+  }
+  */
 }
+
+
+
+
+
 void NeuralNetwork::backprop() {
 }
 
@@ -136,9 +243,10 @@ void NeuralNetwork::backprop() {
 
 
 
-int train(NeuralNetwork net, 
+int train(NeuralNetwork& net, 
           vector<vector<double>>& data, vector<int>& labels) {
 
-  net.forward();
+  net.forward(data);
+  // max_element(v.begin(), v.end()) - v.begin();
   return 1;
 }

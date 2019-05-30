@@ -16,10 +16,21 @@ public:
                 int input_size,
                 int output_size);
 
-  void forward();
+  void dot(vector<vector<double>>& lhs, 
+           vector<vector<double>>& rhs,
+           vector<vector<double>>& product);
+
+  void mat_sum_activate(vector<vector<double>>& lhs,
+                        vector<double>& rhs);
+
+  void softmax(vector<vector<double>>& grads);
+
+  void print_weights();
+
+  void forward(const vector<vector<double>>& input);
 
   void backprop();
 };
 
-int train(NeuralNetwork net, 
+int train(NeuralNetwork& net, 
           vector<vector<double>>& data, vector<int>& labels);

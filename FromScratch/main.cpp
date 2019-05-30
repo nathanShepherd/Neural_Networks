@@ -14,7 +14,21 @@ int main() {
 
   int layers = 3;  
   NeuralNetwork net(layers, data[0].size(), num_classes);
-  train(net, data, labels); 
+
+  train(net, data, labels);
+  net.print_weights();
+
+  /* Debug
+  vector<vector<double>> lhs = {{1 , 2, 3 ,4}};
+  vector<vector<double>> rhs = {{2, 2, 2, 2},
+  vector<vector<double>> prod;
+  net.dot(lhs, rhs, prod);
+
+  for (double vect: prod[0]) {
+    cout << vect <<  " ";
+  }
+  cout << endl; // debug
+  */
 /*
   for (int l: labels) {
     cout << l << " ";
