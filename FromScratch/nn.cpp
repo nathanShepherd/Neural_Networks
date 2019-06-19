@@ -236,7 +236,79 @@ void NeuralNetwork::forward(const vector<vector<double>>& input) {
 
 
 
-void NeuralNetwork::backprop() {
+void NeuralNetwork::backprop(const vector<vector<double>>& input, 
+                             const vector<vector<int>>& labels) {
+/*
+    # Get number of samples
+    m = y.shape[0]
+    
+    # Calculate loss derivative with respect to output
+    dz3 = a3 - y 
+
+    # Calculate loss derivative with respect to second layer weights
+    dW3 = 1/m*(a2.T).dot(dz3)
+    
+    # Calculate loss derivative with respect to second layer bias
+    db3 = 1/m*np.sum(dz3, axis=0)
+    
+    # Calculate loss derivative with respect to first layer
+    dz2 = np.multiply(dz3.dot(W3.T) ,tanh_derivative(a2))
+
+    # Calculate loss derivative with respect to first layer weights
+    dW2 = 1/m*np.dot(a1.T, dz2)
+    
+    # Calculate loss derivative with respect to first layer bias
+    db2 = 1/m*np.sum(dz2, axis=0)
+    
+    dz1 = np.multiply(dz2.dot(W2.T),tanh_derivative(a1))
+    
+    dW1 = 1/m*np.dot(a0.T,dz1)
+    
+    db1 = 1/m*np.sum(dz1,axis=0)
+
+
+
+    dz's are used locally
+    dW/db used for update of weights and bias
+*/
+   vector<vector<vector<double>>> cost_w;//dW
+   vector<vector<vector<double>>> cost_b;//db
+
+   double norm = 1/double(input.size());
+   b_grads.resize(w_grads.size());
+
+   // todo sum()
+   vector<double> loss;
+   for (size_t i = 0; i < w_grads.back().size(); ++i) {
+     //    dz3 = a3 - y 
+     loss.push_back(w_grads.back()[i] - labels.back()[i]);
+   }
+   vector<vector<double>> prev = {loss};
+   
+   for (int i = w_grads.size() - 1; i > 0; --i) {
+    //      dW3 = 1/m*(a2.T).dot(dz3)
+     w_grads[i] = norm * inner_product(w_grads[i].begin(), //todo transposed
+                                       prev.back().begin(), 0);
+
+    //      db3 = 1/m*np.sum(dz3, axis=0)
+     b_grads[i] = norm * sum(prev.back());
+
+
+    //     dz2 = np.multiply(dz3.dot(W3.T) ,tanh_derivative(a2))
+     vector<vector<double>> temp;
+     dot({w_grads[i]}, weights[i],//transposed
+                                 temp); 
+/*
+     for (size_t j = 0; j < w_grads[i].size(); ++j) {
+       temp[0][j] = temp[0][j] * w_grads[i - 1][j];
+     }
+     prev.push_back(temp);
+   }
+   w_grads[0] = norm * inner_product(w_grads[i].begin(), //transposed  
+                                        prev.back().begin(), 0);
+   b_grads[0] = norm * sum(prev.back());
+*/
+  // Use transposed indexing over copy to new matrix
 }
 
 
@@ -244,7 +316,7 @@ void NeuralNetwork::backprop() {
 
 
 int train(NeuralNetwork& net, 
-          vector<vector<double>>& data, vector<int>& labels) {
+          vector<vector<double>>& data, vector<vector<int>>& labels) {
 
   net.forward(data);
   // max_element(v.begin(), v.end()) - v.begin();

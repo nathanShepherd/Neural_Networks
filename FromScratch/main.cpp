@@ -5,11 +5,11 @@
 
 using namespace std;
 
-int read_input(vector<vector<double>>& data, vector<int>& labels);
+int read_input(vector<vector<double>>& data, vector<vector<int>>& labels);
 
 int main() {
   vector<vector<double>> data;
-  vector<int> labels;
+  vector<vector<int>> labels;
   int num_classes = read_input(data, labels);
 
   int layers = 3;  
@@ -38,18 +38,19 @@ int main() {
   return 0;
 }
 
-int read_input(vector<vector<double>>& data, vector<int>& labels) {
+int read_input(vector<vector<double>>& data, vector<vector<int>>& labels) {
   ifstream inf;
   inf.open("input.txt");
   int header;
+  int data_size;
   int input_size;
  
-  inf >> header;// DataSize
-  data.reserve(header);
-  labels.reserve(header);
+  inf >> data_size;
+  data.reserve(data_size);
+  labels.reserve(data_size);
 
   inf >> input_size;// InputSize
-  for (int i = 0; i < header; ++i) {
+  for (int i = 0; i < data_size; ++i) {
     vector<double> datum;
     datum.reserve(header);
     data.push_back(datum);
@@ -57,16 +58,25 @@ int read_input(vector<vector<double>>& data, vector<int>& labels) {
 
   int num_classes;
   inf >> num_classes;// NumClasses  
+  for (int i = 0; i < data_size; ++i) {
+    vector<double> datum;
+    datum.reserve(num_classes);
+    data.push_back(datum);
+  }
 
   double temp;
-  for (vector<double>& vect: data) {
+  for (int j = 0; j < data_size; ++j) {
     for (int i = 0; i < input_size; ++i) {
       inf >> temp;
       //cout << temp << endl; //debug
-      vect.push_back(temp);
+      data[j].push_back(temp);
     }
-    inf >> header;// header is label
-    labels.push_back(header);
+    //inf >> header;// getting '\t'
+    for (int i = 0; i < num_classes; ++i) {
+      inf >> header;
+      labels[j].push_back(temp);
+    }
+    //labels.push_back(header);
   }
   return num_classes;
 }

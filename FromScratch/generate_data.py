@@ -58,9 +58,9 @@ if __name__ == "__main__":
     for idx in range(DATA_SIZE):
       for xi in range(INPUT_SIZE):
         f.write(str(train_x[idx][xi]) + " ")
+      f.write('\t')
       for yi in range(NUM_CLASSES):
-        if train_y[idx][yi] == 1:
-          f.write(str(yi) + '\n')
-          break;
+        f.write(str(train_y[idx][yi]) + " ")
+      f.write('\n')
 
 #?

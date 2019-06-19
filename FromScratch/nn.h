@@ -29,8 +29,9 @@ public:
 
   void forward(const vector<vector<double>>& input);
 
-  void backprop();
+  void backprop(const vector<vector<double>>& input, 
+                const vector<vector<int>>& labels);
 };
 
 int train(NeuralNetwork& net, 
-          vector<vector<double>>& data, vector<int>& labels);
+          vector<vector<double>>& data, vector<vector<int>>& labels);
